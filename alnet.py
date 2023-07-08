@@ -79,6 +79,50 @@ class ResBlock(nn.Module):
 
         return out
 
+def UpSample(channels, scale_factor):
+    return  nn.ConvTranspose2d(channels, channels, kernel_size=scale_factor, stride=scale_factor)
+
+
+import torch
+
+
+def bilinear_upsample(input, scale_factor):
+    batch_size, channels, height, width = input.size()
+    new_height = height * scale_factor
+    new_width = width * scale_factor
+
+    # 计算上采样后的坐标
+    y = torch.linspace(0, height - 1, new_height).unsqueeze(1).expand(new_height, new_width)
+    x = torch.linspace(0, width - 1, new_width).unsqueeze(0).expand(new_height, new_width)
+
+    # 将坐标转换为原始尺寸对应的位置
+    y = y / scale_factor
+    x = x / scale_factor
+
+    # 取整数部分作为左上角坐标
+    y0 = y.floor().long()
+    x0 = x.floor().long()
+
+    # 计算权重
+    wy1 = y - y0.float()
+    wx1 = x - x0.float()
+    wy0 = 1 - wy1
+    wx0 = 1 - wx1
+
+    # 根据权重对四个最近像素进行插值
+    output = torch.zeros(batch_size, channels, new_height, new_width, dtype=input.dtype, device=input.device)
+
+    for i in range(channels):
+        output[:, i, :, :] = (
+                wx0 * wy0 * input[:, i, y0, x0] +
+                wx0 * wy1 * input[:, i, y0 + 1, x0] +
+                wx1 * wy0 * input[:, i, y0, x0 + 1] +
+                wx1 * wy1 * input[:, i, y0 + 1, x0 + 1]
+        )
+
+    return output
+
+
 
 class ALNet(nn.Module):
     def __init__(self, c1: int = 32, c2: int = 64, c3: int = 128, c4: int = 128, dim: int = 128,
@@ -107,14 +151,20 @@ class ALNet(nn.Module):
                                norm_layer=nn.BatchNorm2d)
 
         # ================================== feature aggregation
-        self.conv1 = resnet.conv1x1(c1, dim // 4)
-        self.conv2 = resnet.conv1x1(c2, dim // 4)
-        self.conv3 = resnet.conv1x1(c3, dim // 4)
-        self.conv4 = resnet.conv1x1(dim, dim // 4)
+        channel = dim // 4
+        self.conv1 = resnet.conv1x1(c1, channel)
+        self.conv2 = resnet.conv1x1(c2, channel)
+        self.conv3 = resnet.conv1x1(c3, channel)
+        self.conv4 = resnet.conv1x1(dim, channel)
         self.upsample2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         self.upsample4 = nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True)
         self.upsample8 = nn.Upsample(scale_factor=8, mode='bilinear', align_corners=True)
         self.upsample32 = nn.Upsample(scale_factor=32, mode='bilinear', align_corners=True)
+
+        # self.upsample2 = UpSample(channel, 2)
+        # self.upsample4 = UpSample(channel, 4)
+        # self.upsample8 = UpSample(channel, 8)
+        # self.upsample32 = UpSample(channel, 32)
 
         # ================================== detector and descriptor head
         self.single_head = single_head
@@ -140,6 +190,7 @@ class ALNet(nn.Module):
         x2_up = self.upsample2(x2)  # B x dim//4 x H x W
         x3_up = self.upsample8(x3)  # B x dim//4 x H x W
         x4_up = self.upsample32(x4)  # B x dim//4 x H x W
+        # x1234 = torch.cat([x1, x2_up, x3_up, x4_up], dim=1)
         x1234 = torch.cat([x1, x2_up, x3_up, x4_up], dim=1)
 
         # ================================== detector and descriptor head

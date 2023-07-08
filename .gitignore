@@ -1,0 +1,14 @@
+__pycache__
+*.pyc
+*_disp.jpg
+*_disp.npy
+*.npz
+kitti_data
+models
+.idea/
+*bad*.txt
+splits/indemind/
+output/
+splits/rbn100/
+tmp
+caculate_T.py
