@@ -50,6 +50,12 @@ The required packages are listed in the `requirements.txt` :
 pip install -r requirements.txt
 ```
 
+export onnx:  
+- [ ] todo
+
+export rknn:   
+- [ ] todo
+
 
 
 ## 2. Models
@@ -58,7 +64,24 @@ The off-the-shelf weights of four variant ALIKE models are provided in `models/`
 
 
 
-## 3. Run demo
+## 3. Run
+### 3.1 export onnx    
+```shell
+python onnx/convert_onnx.py --output alike.onnx
+```
+
+### 3.2 export A311D    
+```shell
+cd aml_npu_sdk_6.4.3/acuity-toolkit/conversion_scripts/abby2
+./0_import_model.sh alike.onnx && ./1_quantize_model.sh alike && ./2_export_case_code.sh alike
+```
+
+### 3.3 export rknn    
+```shell
+python3 rknn_convert/rknn_convert.py
+```
+
+### 3.4 run demo
 
 ```shell
 $ python demo.py -h
