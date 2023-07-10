@@ -45,20 +45,18 @@ def sample_descriptor(descriptor_map, kpts, bilinear_interp=False):
     """
     batch_size, channel, height, width = descriptor_map.shape
 
-    descriptors = []
-    for index in range(batch_size):
-        kptsi = kpts[index]  # Nx2,(x,y)
+    kptsi = kpts  # Nx2,(x,y)
 
-        if bilinear_interp:
-            descriptors_ = torch.nn.functional.grid_sample(descriptor_map[index].unsqueeze(0), kptsi.view(1, 1, -1, 2),
-                                                           mode='bilinear', align_corners=True)[0, :, 0, :]  # CxN
-        else:
-            kptsi = (kptsi + 1) / 2 * kptsi.new_tensor([[width - 1, height - 1]])
-            kptsi = kptsi.long()
-            descriptors_ = descriptor_map[index, :, kptsi[:, 1], kptsi[:, 0]]  # CxN
+    if bilinear_interp:
+        descriptors_ = torch.nn.functional.grid_sample(descriptor_map.unsqueeze(0), kptsi.view(1, 1, -1, 2),
+                                                       mode='bilinear', align_corners=True)[0, :, 0, :]  # CxN
+    else:
+        kptsi = (kptsi + 1) / 2 * kptsi.new_tensor([[width - 1, height - 1]])
+        kptsi = kptsi.long()
+        descriptors_ = descriptor_map[0, :, kptsi[:, 1], kptsi[:, 0]]  # CxN
 
-        descriptors_ = torch.nn.functional.normalize(descriptors_, p=2, dim=0)
-        descriptors.append(descriptors_.t())
+    descriptors_ = torch.nn.functional.normalize(descriptors_, p=2, dim=0)
+    descriptors = descriptors_.t()
 
     return descriptors
 
@@ -162,19 +160,17 @@ class DKD(nn.Module):
                 scoredispersitys.append(scoredispersity)
                 kptscores.append(kptscore)
         else:
-            for b_idx in range(b):
-                indices_kpt = indices_keypoints[b_idx]  # one dimension vector, say its size is M
-                keypoints_xy_nms = torch.stack([indices_kpt % w, indices_kpt // w], dim=1)  # Mx2
-                keypoints_xy = keypoints_xy_nms / keypoints_xy_nms.new_tensor(
-                    [w - 1, h - 1]) * 2 - 1  # (w,h) -> (-1~1,-1~1)
-                kptscore = torch.nn.functional.grid_sample(scores_map[b_idx].unsqueeze(0),
-                                                           keypoints_xy.view(1, 1, -1, 2),
-                                                           mode='bilinear', align_corners=True)[0, 0, 0, :]  # CxN
-                keypoints.append(keypoints_xy)
-                scoredispersitys.append(None)
-                kptscores.append(kptscore)
+            b_idx = 0
+            indices_kpt = indices_keypoints[b_idx]  # one dimension vector, say its size is M
+            keypoints_xy_nms = torch.stack([indices_kpt % w, indices_kpt // w], dim=1)  # Mx2
+            keypoints_xy = keypoints_xy_nms / keypoints_xy_nms.new_tensor(
+                [w - 1, h - 1]) * 2 - 1  # (w,h) -> (-1~1,-1~1)
+            # kptscore = torch.nn.functional.grid_sample(scores_map[b_idx].unsqueeze(0),
+            #                                            keypoints_xy.view(1, 1, -1, 2),
+            #                                            mode='bilinear', align_corners=True)[0, 0, 0, :]  # CxN
+            kptscore = scores_map[b_idx].unsqueeze(0)
 
-        return keypoints, scoredispersitys, kptscores
+        return keypoints_xy, None, kptscore
 
     def forward(self, scores_map, descriptor_map, sub_pixel=False):
         """

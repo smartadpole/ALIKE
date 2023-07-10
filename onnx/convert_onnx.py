@@ -14,9 +14,10 @@ sys.path.append(os.path.join(CURRENT_DIR, '../'))
 
 import argparse
 from alnet import ALNet
+from alike import ALike
 import torch
 
-W, H = 640, 480
+W, H = 320, 240
 
 def GetArgs():
     parser = argparse.ArgumentParser(description="",
@@ -31,7 +32,7 @@ def GetArgs():
 def main():
     args = GetArgs()
 
-    model = ALNet()
+    model = ALNet() # ALike(top_k=0)
 
     # load ckpts
     # model.load_state_dict(torch.load(args.model, map_location='cpu'))
@@ -50,7 +51,7 @@ def main():
                       opset_version=12,  # the ONNX version to export the model to
                       do_constant_folding=True,  # whether to execute constant folding for optimization
                       input_names=['input'],  # the model's input names
-                      output_names=['output1', 'output2'])
+                      output_names=['output1'])
 
 
 if __name__ == '__main__':

@@ -83,6 +83,37 @@ class ResBlock(nn.Module):
 def UpSample(channels, scale_factor):
     return nn.ConvTranspose2d(channels, channels, kernel_size=scale_factor, stride=scale_factor)
 
+
+def simple_nms(scores, nms_radius: int):
+    """ Fast Non-maximum suppression to remove nearby points """
+    assert (nms_radius >= 0)
+
+    def max_pool(x):
+        return torch.nn.functional.max_pool2d(
+            x, kernel_size=nms_radius * 2 + 1, stride=1, padding=nms_radius)
+
+    zeros = torch.zeros_like(scores)
+    supp_scores1 = torch.zeros_like(scores)
+    max_mask = scores == max_pool(scores)
+
+    for _ in range(2):
+        supp_mask = max_pool(max_mask.float()) > 0
+        a = torch.sum(supp_mask)
+        b = torch.sum(max_mask)
+        supp_scores1 = scores[max_mask]
+
+        return supp_scores1, max_mask
+
+        supp_scores = torch.where(supp_mask, zeros, scores)
+        c = supp_scores > 0
+        d = torch.sum(c)
+
+
+        new_max_mask = supp_scores == max_pool(supp_scores)
+        max_mask = max_mask | (new_max_mask & (~supp_mask))
+    return torch.where(max_mask, scores, zeros)
+
+
 class ALNet(nn.Module):
     def __init__(self, c1: int = 32, c2: int = 64, c3: int = 128, c4: int = 128, dim: int = 128,
                  single_head: bool = True,
@@ -152,6 +183,9 @@ class ALNet(nn.Module):
 
         descriptor_map = self.head_descriptor(x1234)  # B x dim x H x W
         scores_map = torch.sigmoid(self.head_score(x1234))   # B x 1 x H x W
+
+        scores_map, mask = simple_nms(scores_map, 2)
+        descriptor_map = descriptor_map[:, :, mask[0, 0, :, :]]
 
         return scores_map, descriptor_map
 

@@ -93,18 +93,22 @@ class ALike(ALNet):
         :param sub_pixel: whether to use sub-pixel accuracy
         :return: a dictionary with 'keypoints', 'descriptors', 'scores', and 'time'
         """
-        H, W, three = img.shape
+        # H, W, three = img.shape
+        # assert three == 3, "input image shape should be [HxWx3]"
+        #
+        # # ==================== image size constraint
+        # image = deepcopy(img)
+        # max_hw = max(H, W)
+        # if max_hw > image_size_max:
+        #     ratio = float(image_size_max / max_hw)
+        #     image = cv2.resize(image, dsize=None, fx=ratio, fy=ratio)
+        #
+        # # ==================== convert image to tensor
+        # image = torch.from_numpy(image).to(self.device).to(torch.float32).permute(2, 0, 1)[None] / 255.0
+
+        image = img
+        _, three, H, W, = img.shape
         assert three == 3, "input image shape should be [HxWx3]"
-
-        # ==================== image size constraint
-        image = deepcopy(img)
-        max_hw = max(H, W)
-        if max_hw > image_size_max:
-            ratio = float(image_size_max / max_hw)
-            image = cv2.resize(image, dsize=None, fx=ratio, fy=ratio)
-
-        # ==================== convert image to tensor
-        image = torch.from_numpy(image).to(self.device).to(torch.float32).permute(2, 0, 1)[None] / 255.0
 
         # ==================== extract keypoints
         start = time.time()
@@ -113,16 +117,19 @@ class ALike(ALNet):
             descriptor_map, scores_map = self.extract_dense_map(image)
             keypoints, descriptors, scores, _ = self.dkd(scores_map, descriptor_map,
                                                          sub_pixel=sub_pixel)
-            keypoints, descriptors, scores = keypoints[0], descriptors[0], scores[0]
+            keypoints, descriptors, scores = keypoints, descriptors, scores
             keypoints = (keypoints + 1) / 2 * keypoints.new_tensor([[W - 1, H - 1]])
-
-        if sort:
-            indices = torch.argsort(scores, descending=True)
-            keypoints = keypoints[indices]
-            descriptors = descriptors[indices]
-            scores = scores[indices]
-
-        end = time.time()
+        #
+        # if sort:
+        #     indices = torch.argsort(scores, descending=True)
+        #     keypoints = keypoints[indices]
+        #     descriptors = descriptors[indices]
+        #     scores = scores[indices]
+        #
+        # end = time.time()
+        #
+        # scores = torch.unsqueeze(scores, 1)
+        return keypoints
 
         return {'keypoints': keypoints.cpu().numpy(),
                 'descriptors': descriptors.cpu().numpy(),
