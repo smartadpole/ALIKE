@@ -16,7 +16,7 @@ import argparse
 from alnet import ALNet
 import torch
 
-W, H = 640, 384
+W, H = 640, 480
 
 def GetArgs():
     parser = argparse.ArgumentParser(description="",

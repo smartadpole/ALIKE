@@ -153,7 +153,7 @@ class ALNet(nn.Module):
         descriptor_map = self.head_descriptor(x1234)  # B x dim x H x W
         scores_map = torch.sigmoid(self.head_score(x1234))   # B x 1 x H x W
 
-        return descriptor_map, scores_map
+        return scores_map, descriptor_map
 
 
 if __name__ == '__main__':
