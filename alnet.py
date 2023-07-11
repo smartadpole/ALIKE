@@ -185,7 +185,9 @@ class ALNet(nn.Module):
         scores_map = torch.sigmoid(self.head_score(x1234))   # B x 1 x H x W
 
         scores_map, mask = simple_nms(scores_map, 2)
-        descriptor_map = descriptor_map[:, :, mask[0, 0, :, :]]
+        mask_desc = mask.repeat(1, 128, 1, 1)
+
+        descriptor_map = descriptor_map[mask_desc]
 
         return scores_map, descriptor_map
 
