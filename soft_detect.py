@@ -36,14 +36,14 @@ def simple_nms(scores, nms_radius: int):
     return torch.where(max_mask, scores, zeros)
 
 
-def sample_descriptor(descriptor_map, kpts, bilinear_interp=False):
+def sample_descriptor(height, width, descriptor_map, kpts, bilinear_interp=False):
     """
     :param descriptor_map: BxCxHxW
     :param kpts: list, len=B, each is Nx2 (keypoints) [h,w]
     :param bilinear_interp: bool, whether to use bilinear interpolation
     :return: descriptors: list, len=B, each is NxD
     """
-    batch_size, channel, height, width = descriptor_map.shape
+    batch_size, channel, _, _ = descriptor_map.shape
 
     kptsi = kpts  # Nx2,(x,y)
 
@@ -51,9 +51,8 @@ def sample_descriptor(descriptor_map, kpts, bilinear_interp=False):
         descriptors_ = torch.nn.functional.grid_sample(descriptor_map.unsqueeze(0), kptsi.view(1, 1, -1, 2),
                                                        mode='bilinear', align_corners=True)[0, :, 0, :]  # CxN
     else:
-        kptsi = (kptsi + 1) / 2 * kptsi.new_tensor([[width - 1, height - 1]])
-        kptsi = kptsi.long()
-        descriptors_ = descriptor_map[0, :, kptsi[:, 1], kptsi[:, 0]]  # CxN
+        descriptors_ = torch.nn.functional.grid_sample(descriptor_map, kptsi.view(1, 1, -1, 2),
+                                                        mode='bilinear', align_corners=True)[0, :, 0, :]  # CxN
 
     descriptors_ = torch.nn.functional.normalize(descriptors_, p=2, dim=0)
     descriptors = descriptors_.t()
@@ -182,7 +181,8 @@ class DKD(nn.Module):
         keypoints, scoredispersitys, kptscores = self.detect_keypoints(scores_map,
                                                                        sub_pixel)
 
-        descriptors = sample_descriptor(descriptor_map, keypoints, sub_pixel)
+        _, _, height, width = scores_map.shape
+        descriptors = sample_descriptor(height, width, descriptor_map, keypoints, sub_pixel)
 
         # keypoints: B M 2
         # descriptors: B M D

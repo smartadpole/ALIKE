@@ -17,7 +17,7 @@ from alnet import ALNet
 from alike import ALike
 import torch
 
-W, H = 320, 240
+W, H = 640, 480
 
 def GetArgs():
     parser = argparse.ArgumentParser(description="",
@@ -32,7 +32,7 @@ def GetArgs():
 def main():
     args = GetArgs()
 
-    model = ALNet() # ALike(top_k=0)
+    model = ALike(top_k=0)
 
     # load ckpts
     # model.load_state_dict(torch.load(args.model, map_location='cpu'))

@@ -154,7 +154,8 @@ class ALNet(nn.Module):
 
         # ================================== detector and descriptor head
         self.single_head = single_head
-        self.head_descriptor = resnet.conv1x1(dim, dim)
+        self.head_descriptor = resnet.conv1x1(channel, dim)
+        self.neck = resnet.conv1x1(dim, dim)
         self.head_score = resnet.conv1x1(dim, 1)
 
     def forward(self, image):
@@ -179,15 +180,10 @@ class ALNet(nn.Module):
 
         # ================================== detector and descriptor head
         if not self.single_head:
-            x1234 = self.gate(self.head_descriptor(x1234))
+            x1234 = self.gate(self.neck(x1234))
 
-        descriptor_map = self.head_descriptor(x1234)  # B x dim x H x W
+        descriptor_map = self.head_descriptor(x3)  # B x dim x H x W
         scores_map = torch.sigmoid(self.head_score(x1234))   # B x 1 x H x W
-
-        scores_map, mask = simple_nms(scores_map, 2)
-        mask_desc = mask.repeat(1, 128, 1, 1)
-
-        descriptor_map = descriptor_map[mask_desc]
 
         return scores_map, descriptor_map
 
