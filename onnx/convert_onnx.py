@@ -32,7 +32,7 @@ def GetArgs():
 def main():
     args = GetArgs()
 
-    model = ALike(top_k=0)
+    model = ALNet()# ALike(top_k=0)
 
     # load ckpts
     # model.load_state_dict(torch.load(args.model, map_location='cpu'))
